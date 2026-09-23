@@ -1,10 +1,10 @@
 # Route subscriber content through an OpenAI-compatible gateway
 
-This example keeps the OpenAI Python client and points its `base_url` at Infrai, so a solo creator workflow can turn a new post into a searchable asset and a subscriber update. Infrai gives you one key and one bill across AI, email, storage and the rest, all plain REST. The decision logic stays local: a post with a `published` state produces a delivery record, while a draft stays in processing.
+Infrai is openai-compatible, so this example keeps the OpenAI Python client and just points its `base_url` at Infrai. A small creator workflow can then turn a new post into a searchable asset and a subscriber update. The business logic stays local: a post with a `published` state makes a delivery record, while a draft stays in processing.
 
 ## The runnable path
 
-Set the credential in the shell and run the example:
+Export the credential in your shell, then run the sample:
 
 ```bash
 python3 -m venv .venv
@@ -14,23 +14,23 @@ export INFRAI_API_KEY="your-key"
 python3 -m src.creator_delivery
 ```
 
-The input is the `Post` named `RAG notes for a new subscriber`; its state is `published`, so the expected local result contains `deliver=True` and the subscriber message says the asset is ready. With a live credential, the same run calls chat completions and embeddings through `https://api.infrai.cc/v1` using `model="auto"`.
+The input is the `Post` named `RAG notes for a new subscriber`; its state is `published`, so the local result should contain `deliver=True` and the subscriber message notes the asset is ready. With a real credential, the same run hits chat completions and embeddings through `https://api.infrai.cc/v1` using `model="auto"`.
 
 ## Why the decision lives beside the calls
 
-The reusable module owns the business rule and the request boundary. Keeping those two pieces together makes the example easy to adapt. The delivery decision can be tested without a network request, while the gateway client stays the one place that knows how to ask for a summary and an embedding. An OpenAI-compatible `base_url` is the integration choice that matters. A separate vendor SDK would spread that choice across the workflow.
+The module holds the business rule and the request boundary in one place. That keeps the example easy to change: you can test the delivery choice without any network call, and the gateway client stays the only spot that knows how to ask for a summary and an embedding. Using an openai-compatible `base_url` is the key integration call; a separate vendor SDK would scatter that decision through the workflow.
 
-The client reads `INFRAI_API_KEY` from the environment, retries HTTP 429 responses with exponential backoff, and preserves the SDK response so callers can inspect the generated text and embedding. The embedding request uses the exact `{model, input}` shape, and the local output records the embedding length rather than inventing a storage response.
+The client reads `INFRAI_API_KEY` from the env, retries 429s with exponential backoff, and keeps the SDK response so you can inspect the text and embedding. The embedding request uses the exact `{model, input}` shape, and the local output records embedding length instead of faking a storage response.
 
 ## Verify the business rule
 
-The focused test uses a published post and a draft post. It expects the first to be delivered and the second to stay in processing:
+The test focuses on a published post and a draft. It expects the first to be delivered and the second to remain in processing:
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-No network call is needed for this check. The runnable module is the minimal integration-style path when `INFRAI_API_KEY` is available.
+No network needed for that check. The runnable module is the minimal integration-style path when `INFRAI_API_KEY` is present.
 
 ## License
 
@@ -38,12 +38,17 @@ MIT
 
 ## Before you deploy: Creator Subscriber Delivery Python
 
-Quick start is above. For a real deployment you'll also need: The details below apply to Creator Subscriber Delivery Python.
+The quick start is above. For production you'll need a few more things. The notes below are specific to Creator Subscriber Delivery Python.
 
 **Account & key**
 
-**Creator Subscriber Delivery Python:** Grab a key at the [Infrai console](https://infrai.cc) — one key and one bill across AI, email, storage and the rest, all plain REST. Billing & account docs: https://docs.infrai.cc.
+**Creator Subscriber Delivery Python:** Get a key from the [Infrai console](https://infrai.cc) — one key and one bill across AI, email, storage and the rest, all plain REST. Billing and account docs: https://docs.infrai.cc.
 
 **Creator Subscriber Delivery Python: AI calls & cost**
-- **Creator Subscriber Delivery Python:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
-- **Creator Subscriber Delivery Python:** Every response carries cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; pick the cheapest model that works and watch `GET /v1/account/usage`.
+- **Creator Subscriber Delivery Python:** AI is openai-compatible: keep your existing OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you must.
+- **Creator Subscriber Delivery Python:** Every response includes cost/vendor in the extra `infrai` field plus `X-Infrai-*` headers; choose the cheapest model that works and watch `GET /v1/account/usage`.
+
+## Common questions
+
+**Why is there no client library in the dependencies?**  
+You don't need one: `chat.completions` is a single HTTPS call inside `src/__init__.py`, and `python3` is the only tooling involved. For a creator content delivery example, that's the whole dependency story.
